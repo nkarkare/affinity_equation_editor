@@ -35,35 +35,61 @@ Affinity has no way for a script to hook a double-click on a layer, so double-cl
 
 | File | Purpose |
 |---|---|
+| `Start Equation Editor.bat` | **Double-click this.** Installs, updates and starts everything |
+| `launcher/bootstrap.ps1` | What the .bat actually runs — the setup steps |
 | `equation_editor.js` | The Affinity Publisher script — **this is the main deliverable** |
+| `FixWorksheetFonts.js` | Separate script: PrintClearly → PrintClearly-Bold |
 | `server/katex_server.js` | Standalone MathJax render server — run with Node, no build step |
-| `server/server.js` | Node.js source for the packaged (`server.exe`) renderer |
-| `server/package.json` | npm config for building `server.exe` with `pkg` |
-| `server/service.xml` | WinSW config to run the renderer as a Windows service |
-| `server/build.ps1` | PowerShell build script — produces `server.exe` + installer |
-
-**Binaries** (attached to the [latest GitHub Release](../../releases/latest)):
-
-| File | Purpose |
-|---|---|
-| `AffinityEquationRenderer-Package.zip` | All-in-one package: server, service wrapper, install bat |
-| `AffinityEquationRenderer-Setup.exe` | Windows installer (installs + registers the service) |
+| `server/package.json` | What the server needs installed |
 
 ---
 
-## Quick start
+## Easiest start — one file
+
+Download the project (green **Code** button → **Download ZIP**), unzip it, and double-click:
+
+```
+Start Equation Editor.bat
+```
+
+That is the whole thing. It will:
+
+1. Install **Node.js** if this PC does not have it
+2. Download the **newest version** of the script and server
+3. Install the maths engine (first run only — it takes a minute)
+4. Copy the script's path to your clipboard and open the folder
+5. Start the maths server and leave it running
+
+Leave that black window open while you work. Closing it turns the maths off.
+
+Run it again any time — it updates itself and picks up where it left off.
+
+| Want more detail? | Run |
+|---|---|
+| Log every render | `"Start Equation Editor.bat" --debug` |
+| Log even more, including failed drawings | `"Start Equation Editor.bat" --trace` |
+| Set up but do not start the server | `"Start Equation Editor.bat" --setup` |
+
+**Putting the script into Affinity.** Affinity keeps its *own copy* of a script rather than a link to the file, so this last step is by hand:
+
+1. Open Affinity Publisher
+2. **View → Studio → Scripts**
+3. Click **+** (Add)
+4. Paste the path with **Ctrl+V** and press Enter
+
+You only repeat that when `equation_editor.js` itself changes. The maths server updates on its own.
+
+---
+
+## Quick start (manual)
 
 ### 1 — Start the local render server
-
-Two options depending on your setup:
-
-**Option A — `katex_server.js` (simplest, no install)**
 
 Requires [Node.js 14+](https://nodejs.org/).
 
 ```bash
 cd server
-npm install mathjax-full
+npm install
 node katex_server.js
 ```
 
@@ -72,21 +98,20 @@ The server starts on `http://localhost:3737` and stays running in that terminal.
 **Verify:**
 ```
 curl http://localhost:3737/health
-# → {"status":"ok","engine":"mathjax3"}
-```
-
-**Option B — Windows service (set-and-forget)**
-
-Download `AffinityEquationRenderer-Package.zip` from the [Releases page](../../releases/latest), extract it, and run `install.bat` as Administrator.
-
-This installs a Windows service (`AffinityEquationRenderer`) that starts automatically on boot.
-
-**Verify:**
-```
-curl http://localhost:3737/health
+# → {"status":"ok","engine":"mathjax 3.2.2","port":3737,...}
 ```
 
 > **No server?** The script falls back to `https://math.vercel.app` (cloud) automatically — slower, requires network access enabled in Affinity preferences.
+
+### When an equation will not draw
+
+Open **http://localhost:3737/debug** in a browser. It lists everything the server has drawn, and every formula that failed with the reason why. For live detail in the terminal, start the server with `--debug` (timing, shape count, height in ems) or `--trace` (the same plus the raw drawing of any failure).
+
+```bash
+node katex_server.js --debug
+node katex_server.js --trace
+node katex_server.js --port 3738     # run a second one alongside
+```
 
 ### 2 — Add the script to Affinity Publisher
 
@@ -123,26 +148,6 @@ e^{i\pi} + 1 = 0                             % Euler's identity
 If a formula has a mistake in it, the script says so in plain words — which command it did not recognise, or which brackets do not match — and leaves your page exactly as it was.
 
 > **Note:** `\dfrac`, `\begin{pmatrix}`, `\begin{align}` and every other AMS command silently failed before. The server listed the AMS package but never imported it, so those commands came back as *"Undefined control sequence"*. Fixed in `server/katex_server.js` — **restart the render server** to pick it up.
-
----
-
-## Building from source
-
-Requires Node.js 18+, `pkg`, and PowerShell 7+.
-
-```powershell
-cd installer
-npm install
-.\build.ps1
-# Outputs: dist\server.exe, dist\AffinityEquationRenderer-Package.zip
-```
-
-Or build `server.exe` alone:
-```bash
-npm install -g pkg
-npm install
-pkg server.js --targets node18-win-x64 --output dist/server.exe
-```
 
 ---
 

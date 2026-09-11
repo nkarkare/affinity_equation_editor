@@ -246,9 +246,29 @@ Step 'Checking the maths engine'
 $serverDir = Join-Path $APP_DIR 'server'
 $mathjax   = Join-Path $serverDir 'node_modules\mathjax-full\package.json'
 
-if (Test-Path $mathjax) {
+# Checking that the folder exists is not enough — a half-finished install
+# leaves mathjax-full in place while its own dependencies are missing, and the
+# server then quietly drops to a reduced set of commands. Actually loading it
+# is the only check that means anything.
+function Test-MathJaxWorks {
+    if (-not (Test-Path $mathjax)) { return $false }
+    Push-Location $serverDir
+    try {
+        & $node -e "require('mathjax-full/js/input/tex/AllPackages.js')" *>&1 | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    } finally {
+        Pop-Location
+    }
+}
+
+if (Test-MathJaxWorks) {
     Good 'Already installed'
 } else {
+    if (Test-Path $mathjax) {
+        Warn 'The maths engine is only half installed. Repairing it.'
+    }
     Say '    Installing MathJax. First time only, please wait...'
 
     # A dropped connection part-way through a download is common enough on
@@ -269,10 +289,10 @@ if (Test-Path $mathjax) {
         } finally {
             Pop-Location
         }
-        if (Test-Path $mathjax) { break }
+        if (Test-MathJaxWorks) { break }
     }
 
-    if (Test-Path $mathjax) {
+    if (Test-MathJaxWorks) {
         Good 'MathJax installed'
     } else {
         $hint = @(
