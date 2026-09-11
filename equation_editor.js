@@ -1,8 +1,8 @@
 /**
- * name: Equation Editor
+ * name: Equation Editor (11 Sep 2026)
  * category: Tools
  * description: LaTeX equation editor for Affinity Publisher — add new equations
- *              and change equations you already made.
+ *              and change equations you already made.  v6.1.0, 11 Sep 2026.
  *
  *              WHAT IT DOES:
  *              • Opens with "Add a NEW equation" chosen. Your old equations are
@@ -19,6 +19,17 @@
 'use strict';
 
 (function () {
+
+    // ── Which version is this? ────────────────────────────────────────────────
+    // Affinity stores its OWN COPY of a script instead of a link to the file,
+    // so nothing inside Affinity tells you whether the copy it holds is the
+    // current one. These two lines are shown in the dialog title, so an old
+    // copy gives itself away the moment the dialog opens.
+    //
+    // Kept honest by tools/stamp-version.js, which the pre-commit hook runs
+    // whenever this file is staged — see README, "Keeping the date honest".
+    const VERSION   = '6.1.0';
+    const PUBLISHED = '11 Sep 2026';
 
     // ── Imports ────────────────────────────────────────────────────────────────
     const { app }                                        = require('/application');
@@ -329,7 +340,7 @@
     });
 
     // ── Build the dialog ──────────────────────────────────────────────────────
-    const dlg = Dialog.create('Equation Editor');
+    const dlg = Dialog.create('Equation Editor   v' + VERSION + '   •   ' + PUBLISHED);
     // Affinity gives scripts no control over font size or control height, so
     // the only way to make the symbol buttons bigger is to give them more room:
     // a wider dialog divided by the same five columns. Drag the dialog wider
@@ -858,7 +869,7 @@
     prefs.lastPt = pt;
     savePrefs(prefs);
 
-    console.log('[EqEditor] ' + (editingNode ? 'changed' : 'added') +
+    console.log('[EqEditor v' + VERSION + ' ' + PUBLISHED + '] ' + (editingNode ? 'changed' : 'added') +
                 '  "' + formula + '"  ' + pt + 'pt  (' +
                 Math.round(inkW) + '×' + Math.round(inkH) + ' px @ ' + DPI + ' dpi)' +
                 '  shapes=' + elements.length + '  via ' + source);

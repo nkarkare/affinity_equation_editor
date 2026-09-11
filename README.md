@@ -41,6 +41,25 @@ Affinity has no way for a script to hook a double-click on a layer, so double-cl
 | `FixWorksheetFonts.js` | Separate script: PrintClearly → PrintClearly-Bold |
 | `server/katex_server.js` | Standalone MathJax render server — run with Node, no build step |
 | `server/package.json` | What the server needs installed |
+| `tools/stamp-version.js` | Keeps the publish date in the script honest |
+
+---
+
+## Keeping the date honest
+
+A publish date nobody remembers to update is worse than none — it lies. Turn on the hook once, and every commit that touches `equation_editor.js` re-stamps it automatically:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+By hand, if you prefer:
+
+```bash
+node tools/stamp-version.js                  # stamp today's date
+node tools/stamp-version.js --version 6.2.0  # also set the version
+node tools/stamp-version.js --check          # fail if the date is stale
+```
 
 ---
 
@@ -80,6 +99,15 @@ Run it again any time — it updates itself and picks up where it left off.
 4. Paste the path with **Ctrl+V** and press Enter
 
 You only repeat that when `equation_editor.js` itself changes. The maths server updates on its own.
+
+### Which version is Affinity running?
+
+Because Affinity holds its own copy, the script wears its publish date where you cannot miss it:
+
+- **Scripts panel** — listed as `Equation Editor (11 Sep 2026)`
+- **Dialog title** — `Equation Editor   v6.1.0   •   11 Sep 2026`
+
+If that date is older than the one in the folder the launcher opened, Affinity is running a stale copy. Add the file again and delete the old entry.
 
 ---
 

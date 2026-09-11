@@ -1,0 +1,14 @@
+#!/bin/sh
+# Stamps today's date into equation_editor.js whenever it is being committed,
+# so the date shown in the dialog title is always the date the script actually
+# went out. Turn it on once with:
+#
+#     git config core.hooksPath .githooks
+
+if git diff --cached --name-only | grep -q '^equation_editor\.js$'; then
+    node tools/stamp-version.js --quiet || {
+        echo "pre-commit: could not stamp the version into equation_editor.js"
+        exit 1
+    }
+    git add equation_editor.js
+fi
