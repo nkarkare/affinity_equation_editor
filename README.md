@@ -70,6 +70,8 @@ Run it again any time — it updates itself and picks up where it left off.
 | Log even more, including failed drawings | `"Start Equation Editor.bat" --trace` |
 | Set up but do not start the server | `"Start Equation Editor.bat" --setup` |
 
+> Keep the quotes. The name begins with `Start`, which is also a built-in Command Prompt keyword, so without them cmd runs the wrong thing.
+
 **Putting the script into Affinity.** Affinity keeps its *own copy* of a script rather than a link to the file, so this last step is by hand:
 
 1. Open Affinity Publisher
