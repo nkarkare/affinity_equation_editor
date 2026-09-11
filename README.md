@@ -76,8 +76,13 @@ That is the whole thing. It will:
 1. Install **Node.js** if this PC does not have it
 2. Download the **newest version** of the script and server
 3. Install the maths engine (first run only — it takes a minute)
-4. Copy the script's path to your clipboard
-5. Start the maths server and leave it running
+4. Start **Affinity**, installing it first if it is missing
+5. Start **Script Manager**, installing it first if it is missing, and hand it the newest script
+6. Start the maths server and leave it running
+
+Affinity is started before Script Manager on purpose: Script Manager talks to Affinity over a small server Affinity runs on port 6767, and starting them the other way round leaves it reporting no connection.
+
+> Affinity is paid software. The launcher can install it, but you still sign in with your own account afterwards.
 
 Leave that black window open while you work. Closing it turns the maths off.
 

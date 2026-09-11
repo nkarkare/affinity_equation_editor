@@ -330,44 +330,158 @@ if (-not $copied) {
 }
 if ($copied) { Good 'That path is copied, in case you need it' }
 
-# ── Hand it to Script Manager, if it is installed ─────────────────────────────
-# Script Manager for Affinity (github.com/JiriKrblich/Affinity-script-manager)
-# watches its MyScripts folder. When a file there changes AND a script of the
-# same name is already installed in Affinity, it re-pushes it automatically —
-# which is the only way to avoid re-adding this script by hand after every
-# update, because Affinity itself stores a copy rather than a link.
-#
-# The match is filename against installed title, so the file has to be named
-# exactly after the "name:" field in the script header: "Equation Editor.js".
-$smData    = Join-Path $env:APPDATA 'affinity-script-manager'
-$smScripts = Join-Path $smData 'MyScripts'
-$smExe     = Join-Path $env:LOCALAPPDATA 'Programs\affinity-script-manager\Script Manager for Affinity.exe'
-$smTarget  = Join-Path $smScripts 'Equation Editor.js'
-$usingSM   = $false
+# ── 5. Affinity ──────────────────────────────────────────────────────────────
+# Affinity has to be up BEFORE Script Manager, because Script Manager talks to
+# it over a small server Affinity itself runs on port 6767. Start them the other
+# way round and Script Manager comes up reporting no bridge.
+Step 'Affinity'
 
-if (Test-Path $smData) {
-    $usingSM = $true
-    Step 'Script Manager'
+function Find-Affinity {
+    foreach ($p in @(
+        (Join-Path $env:ProgramFiles 'Affinity\Affinity\Affinity.exe'),
+        (Join-Path $env:ProgramFiles 'Affinity\Publisher 2\Publisher.exe'),
+        (Join-Path $env:ProgramFiles 'Affinity\Designer 2\Designer.exe'),
+        (Join-Path $env:ProgramFiles 'Affinity\Photo 2\Photo.exe')
+    )) {
+        if (Test-Path $p) { return $p }
+    }
+    return $null
+}
+
+# Affinity's bridge listens on IPv6 loopback ONLY. Two traps in that: a check
+# against 127.0.0.1 alone reports it down, and a default TcpClient is an IPv4
+# socket that cannot reach ::1 even when handed that address. Asking Windows
+# what is listening sidesteps both.
+function Test-Bridge {
     try {
-        if (-not (Test-Path $smScripts)) { New-Item -ItemType Directory -Path $smScripts -Force | Out-Null }
-        Copy-Item $SCRIPT_JS $smTarget -Force
-        Good 'Copied into Script Manager as "Equation Editor"'
-    } catch {
-        Warn "Could not copy it in: $($_.Exception.Message)"
-        $usingSM = $false
+        $listening = @(Get-NetTCPConnection -LocalPort 6767 -State Listen -ErrorAction Stop)
+        if ($listening.Count -gt 0) { return $true }
+        return $false
+    } catch { }
+
+    # Fallback where that cmdlet is missing. The socket family has to match the
+    # address it is given, or the connect fails for the wrong reason.
+    foreach ($pair in @(
+        @('::1',       [Net.Sockets.AddressFamily]::InterNetworkV6),
+        @('127.0.0.1', [Net.Sockets.AddressFamily]::InterNetwork)
+    )) {
+        $client = New-Object Net.Sockets.TcpClient($pair[1])
+        try {
+            $async = $client.BeginConnect($pair[0], 6767, $null, $null)
+            if ($async.AsyncWaitHandle.WaitOne(700, $false)) {
+                $client.EndConnect($async)
+                return $true
+            }
+        } catch {
+        } finally {
+            $client.Close()
+        }
+    }
+    return $false
+}
+
+$affinityExe = Find-Affinity
+
+if (-not $affinityExe) {
+    Warn 'Affinity is not installed on this PC.'
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Say '    Installing it with winget. This is a big download — please wait.'
+        Say '    A Windows permission box may pop up — please say yes.'
+        try {
+            winget install --id Canva.Affinity --silent --accept-source-agreements --accept-package-agreements | Out-Null
+        } catch {
+            Warn "winget could not do it: $($_.Exception.Message)"
+        }
+        $affinityExe = Find-Affinity
+    }
+}
+
+if (-not $affinityExe) {
+    Warn 'Affinity could not be installed automatically.'
+    Say  '    Get it from  https://affinity.serif.com  and run this file again.'
+    Say  '    Affinity is paid software, so it needs your account after installing.'
+} else {
+    $affinityRunning = Get-Process -Name 'Affinity', 'Publisher', 'Designer', 'Photo' -ErrorAction SilentlyContinue
+    if ($affinityRunning) {
+        Good 'Affinity is already running'
+    } else {
+        try {
+            Start-Process $affinityExe
+            Good 'Started Affinity'
+        } catch {
+            Warn "Could not start Affinity: $($_.Exception.Message)"
+        }
     }
 
-    if ($usingSM -and (Test-Path $smExe)) {
-        $running = Get-Process -Name 'Script Manager for Affinity' -ErrorAction SilentlyContinue
-        if ($running) {
-            Good 'Script Manager is already running — it will pick this up'
-        } else {
-            try {
-                Start-Process $smExe
-                Good 'Started Script Manager'
-            } catch {
-                Warn 'Could not start Script Manager — open it yourself.'
-            }
+    # Affinity takes a while to come up, and Script Manager is no use until its
+    # bridge answers. Wait for it, but never hang on it.
+    if (-not (Test-Bridge)) {
+        Say '    Waiting for Affinity to finish starting...'
+        for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 2
+            if (Test-Bridge) { break }
+        }
+    }
+    if (Test-Bridge) {
+        Good 'Affinity is ready'
+    } else {
+        Warn 'Affinity is up but its script bridge is not answering.'
+        Say  '    Script Manager will retry on its own once you use it.'
+    }
+}
+
+# ── 6. Script Manager ────────────────────────────────────────────────────────
+Step 'Script Manager'
+
+$smExeDir = Join-Path $env:LOCALAPPDATA 'Programs\affinity-script-manager'
+$smExe    = Join-Path $smExeDir 'Script Manager for Affinity.exe'
+
+if (-not (Test-Path $smExe)) {
+    Warn 'Script Manager is not installed.'
+    Say  '    Downloading it from GitHub...'
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $api = Invoke-RestMethod -Uri 'https://api.github.com/repos/JiriKrblich/Affinity-script-manager/releases/latest' -UseBasicParsing -Headers @{ 'User-Agent' = 'affinity-equation-editor' }
+        $asset = $api.assets | Where-Object { $_.name -like '*Setup*.exe' } | Select-Object -First 1
+        if (-not $asset) { throw 'no Windows installer in the latest release' }
+
+        $setup = Join-Path $env:TEMP $asset.name
+        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $setup -UseBasicParsing
+        Say  "    Installing $($asset.name)..."
+        Start-Process $setup -Wait
+        Remove-Item $setup -Force -ErrorAction SilentlyContinue
+    } catch {
+        Warn "Could not install Script Manager: $($_.Exception.Message)"
+        Say  '    Get it from  https://github.com/JiriKrblich/Affinity-script-manager/releases'
+    }
+}
+
+# Its watched folder only exists once it has run at least once.
+$smData    = Join-Path $env:APPDATA 'affinity-script-manager'
+$smScripts = Join-Path $smData 'MyScripts'
+$usingSM   = $false
+
+if (Test-Path $smExe) {
+    # The filename has to match the "name:" field in the script header, or
+    # Script Manager will not treat a change as an update to the installed copy.
+    try {
+        if (-not (Test-Path $smScripts)) { New-Item -ItemType Directory -Path $smScripts -Force | Out-Null }
+        Copy-Item $SCRIPT_JS (Join-Path $smScripts 'Equation Editor.js') -Force
+        $usingSM = $true
+        Good 'Copied in as "Equation Editor"'
+    } catch {
+        Warn "Could not copy the script in: $($_.Exception.Message)"
+    }
+
+    $smRunning = Get-Process -Name 'Script Manager for Affinity' -ErrorAction SilentlyContinue
+    if ($smRunning) {
+        Good 'Script Manager is already running — it will pick this up'
+    } else {
+        try {
+            Start-Process $smExe
+            Good 'Started Script Manager'
+        } catch {
+            Warn 'Could not start Script Manager — open it yourself.'
         }
     }
 }
@@ -377,26 +491,23 @@ Say '  -------------------------------------------------------'
 if ($usingSM) {
     Say '   FIRST TIME ONLY:'
     Say ''
-    Say '     1. Open Affinity Publisher and leave it open'
-    Say '     2. In Script Manager, find "Equation Editor"'
+    Say '     1. In Script Manager, find "Equation Editor"'
     Say '        under My Scripts'
-    Say '     3. Click the install dot next to it'
+    Say '     2. Click the install dot next to it'
     Say ''
     Say '   After that it updates itself. Run this file again'
-    Say '   and the newest version goes straight into Affinity,'
-    Say '   as long as Affinity and Script Manager are open.'
+    Say '   and the newest version goes straight into Affinity.'
 } else {
-    Say '   To put this into Affinity (only needed once, and'
-    Say '   again whenever the script itself changes):'
+    Say '   To put this into Affinity by hand:'
     Say ''
-    Say '     1. Open Affinity Publisher'
+    Say '     1. Open Affinity'
     Say '     2. Menu:  View  >  Studio  >  Scripts'
     Say '     3. Click the  +  (or Add) button'
     Say '     4. Paste the path with Ctrl+V and press Enter'
     Say ''
-    Say '   Affinity keeps its own copy of the script, so after'
-    Say '   an update you have to add it again to get the newest'
-    Say '   one. The maths server updates on its own.'
+    Say '   Affinity keeps its own copy, so after an update you'
+    Say '   have to add it again. Installing Script Manager'
+    Say '   makes that automatic.'
 }
 Say '  -------------------------------------------------------'
 
@@ -407,7 +518,7 @@ if ($NoStart) {
     exit 0
 }
 
-# ── 5. Start the server ───────────────────────────────────────────────────────
+# ── 7. Start the server ───────────────────────────────────────────────────────
 Step 'Starting the maths server'
 
 # Something already on the port is almost always this same server from earlier.
