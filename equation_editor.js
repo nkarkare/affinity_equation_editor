@@ -341,9 +341,10 @@
     // Symbol buttons are set to full width, so they stretch to whatever share
     // of the dialog their column gets. A wide dialog therefore does not make
     // the glyphs bigger — it just smears each one across a button wide enough
-    // for a sentence. Ten columns in a modest width gives a sane button around
-    // fifty pixels across, and leaves the dialog narrow enough to drag.
-    dlg.initialWidth = 560;
+    // for a sentence. Ten columns at this width gives a button around 48px,
+    // and with the column padding removed above the buttons keep that size
+    // while the window itself loses the gaps.
+    dlg.initialWidth = 480;
     dlg.setIsResizable(true);
 
     const col = dlg.addColumn();
@@ -367,7 +368,15 @@
     const symGroup   = col.addGroup('Symbols  (click one to add it at the end)');
     const symStack   = symGroup.addColumnStack();
     const symColGrps = [];
-    for (let c = 0; c < SYMBOL_COLUMNS; c++) symColGrps.push(symStack.addColumn().addGroup(''));
+    for (let c = 0; c < SYMBOL_COLUMNS; c++) {
+        const symCol = symStack.addColumn();
+        // Squeezes out the gap between columns, so ten buttons of a decent size
+        // fit a narrow window. Nothing else in Affinity's own SDK uses this
+        // property, so it is guarded — if it ever stops working the grid just
+        // goes back to its default spacing instead of the dialog failing.
+        try { symCol.setPaddingFactor(0); } catch (_) {}
+        symColGrps.push(symCol.addGroup(''));
+    }
     SYMBOLS.forEach((sym, i) => {
         const btn = symColGrps[i % SYMBOL_COLUMNS].addButton(sym[0]);
         btn.setIsFullWidth(true);

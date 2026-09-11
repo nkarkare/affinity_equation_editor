@@ -188,7 +188,7 @@ The symbol palette and the ready-made list are aimed at **CBSE maths and science
 - **Physics** — speed, `F = ma`, Ohm's law, work, power, kinetic and potential energy, density, the three equations of motion, gravitation, `E = mc²`
 - **Chemistry** — water, moles, common salt, heating limestone, a reversible reaction, photosynthesis
 
-> **Symbols look small?** Affinity gives scripts no control over font size in a dialog, so the glyphs are whatever size the Affinity UI font is — widening the dialog only stretches each button sideways without making its symbol any bigger. The grid is 10 across in a 560px dialog, which keeps the whole window short enough for a laptop screen.
+> **Symbols look small?** Affinity gives scripts no control over font size in a dialog, so the glyphs are whatever size the Affinity UI font is — widening the dialog only stretches each button sideways without making its symbol any bigger. The grid is 10 across in a 480px dialog with the column gaps removed, which keeps the whole window small enough for a laptop screen.
 
 ---
 
