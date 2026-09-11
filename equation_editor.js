@@ -32,43 +32,103 @@
     const { AddChildNodesCommandBuilder, InsertionMode } = require('/commands');
     const { Document }                                   = require('/document');
 
-    // ── 50 essential symbols — 5 columns × 10 rows ────────────────────────────
+    // ── 60 symbols for CBSE maths and science — 5 columns × 12 rows ───────────
+    // Chosen for classes 6-12. Buttons append to the end of the box, so every
+    // one of these has to read correctly both on its own and after whatever is
+    // already typed. The power buttons carry their own base (x^{2}, not a bare
+    // ^{2}) so that clicking one into an empty box still gives something
+    // sensible rather than a lone floating exponent.
     const SYMBOLS = [
-        // Row 1 — Arithmetic
-        ['±','\\pm'],            ['×','\\times'],         ['÷','\\div'],           ['·','\\cdot'],          ['∘','\\circ'],
-        // Row 2 — Comparison
-        ['≠','\\neq'],           ['≤','\\leq'],           ['≥','\\geq'],           ['≈','\\approx'],        ['≡','\\equiv'],
-        // Row 3 — Logic
-        ['∧','\\wedge'],         ['∨','\\vee'],           ['¬','\\neg'],           ['∀','\\forall'],        ['∃','\\exists'],
-        // Row 4 — Greek I
-        ['α','\\alpha'],         ['β','\\beta'],          ['γ','\\gamma'],         ['δ','\\delta'],         ['ε','\\varepsilon'],
-        // Row 5 — Greek II
-        ['θ','\\theta'],         ['λ','\\lambda'],        ['μ','\\mu'],            ['π','\\pi'],            ['σ','\\sigma'],
-        // Row 6 — Greek III + uppercase
-        ['φ','\\varphi'],        ['ω','\\omega'],         ['Γ','\\Gamma'],         ['Δ','\\Delta'],         ['Σ','\\Sigma'],
-        // Row 7 — Calculus / special
-        ['∞','\\infty'],         ['∂','\\partial'],       ['∇','\\nabla'],         ['ℝ','\\mathbb{R}'],     ['ℕ','\\mathbb{N}'],
-        // Row 8 — Integrals & roots
-        ['∫','\\int_{a}^{b}'],   ['∬','\\iint'],          ['∑','\\sum_{n=0}^{N}'], ['√','\\sqrt{x}'],       ['∛','\\sqrt[3]{x}'],
-        // Row 9 — Arrows
-        ['→','\\rightarrow'],    ['⇒','\\Rightarrow'],    ['⟹','\\implies'],       ['↔','\\leftrightarrow'],['↦','\\mapsto'],
-        // Row 10 — Sets
-        ['∈','\\in'],            ['∉','\\notin'],         ['∅','\\emptyset'],      ['∪','\\cup'],           ['∩','\\cap'],
+        // Row 1 — Number work
+        ['±','\\pm'],            ['×','\\times'],         ['÷','\\div'],           ['·','\\cdot'],          ['≠','\\neq'],
+        // Row 2 — Comparing
+        ['≤','\\leq'],           ['≥','\\geq'],           ['≈','\\approx'],        ['≡','\\equiv'],         ['∝','\\propto'],
+        // Row 3 — Powers and roots
+        ['x²','x^{2}'],          ['x³','x^{3}'],          ['xⁿ','x^{n}'],          ['√','\\sqrt{x}'],       ['∛','\\sqrt[3]{x}'],
+        // Row 4 — Fractions
+        ['a/b','\\frac{a}{b}'],  ['½','\\frac{1}{2}'],    ['22/7','\\frac{22}{7}'],['5⅕','5\\frac{1}{5}'],  ['xₙ','x_{n}'],
+        // Row 5 — Geometry
+        ['°','^{\\circ}'],       ['∠','\\angle'],         ['⊥','\\perp'],          ['∥','\\parallel'],      ['△','\\triangle'],
+        // Row 6 — Shapes and reasoning
+        ['□','\\square'],        ['≅','\\cong'],          ['∼','\\sim'],           ['∴','\\therefore'],     ['∵','\\because'],
+        // Row 7 — Sets
+        ['∈','\\in'],            ['∉','\\notin'],         ['⊂','\\subset'],        ['∪','\\cup'],           ['∩','\\cap'],
+        // Row 8 — Greek letters
+        ['α','\\alpha'],         ['β','\\beta'],          ['θ','\\theta'],         ['π','\\pi'],            ['λ','\\lambda'],
+        // Row 9 — Science letters
+        ['μ','\\mu'],            ['ρ','\\rho'],           ['Δ','\\Delta'],         ['Ω','\\Omega'],         ['∞','\\infty'],
+        // Row 10 — Arrows
+        ['→','\\rightarrow'],    ['←','\\leftarrow'],     ['↑','\\uparrow'],       ['↓','\\downarrow'],     ['↔','\\leftrightarrow'],
+        // Row 11 — Reactions and logic
+        ['⇌','\\rightleftharpoons'], ['⇒','\\Rightarrow'],['⇔','\\Leftrightarrow'],['Δ→','\\xrightarrow{\\Delta}'], ['∅','\\emptyset'],
+        // Row 12 — Trigonometry and averages
+        ['sin','\\sin\\theta'],  ['cos','\\cos\\theta'],  ['tan','\\tan\\theta'],  ['Σ','\\sum'],           ['x̄','\\bar{x}'],
     ];
 
+    // ── Ready-made equations for CBSE maths and science ───────────────────────
+    // School level, classes 6-12. Every name starts with its topic so the list
+    // reads like a menu instead of a jumble.
     const TEMPLATES = [
-        ['Quadratic formula',    '\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}'],
-        ["Euler's identity",     'e^{i\\pi} + 1 = 0'],
-        ['Gaussian integral',    '\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}'],
-        ['Basel problem',        '\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}'],
-        ['Bayes theorem',        'P(A|B) = \\dfrac{P(B|A)\\,P(A)}{P(B)}'],
-        ['Normal distribution',  'f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}} e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}}'],
-        ["Maxwell's equation",   '\\nabla \\times \\mathbf{E} = -\\dfrac{\\partial \\mathbf{B}}{\\partial t}'],
-        ["Schrödinger",          '\\hat{H}\\psi = i\\hbar\\dfrac{\\partial\\psi}{\\partial t}'],
-        ['2×2 matrix',           '\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}'],
-        ['Taylor series',        'f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x-a)^n'],
-        ['Pythagorean theorem',  'a^2 + b^2 = c^2'],
-        ['E = mc²',              'E = mc^2'],
+        // Fractions and numbers
+        ['Fraction — a over b',                  '\\frac{a}{b}'],
+        ['Fraction — one half',                  '\\frac{1}{2}'],
+        ['Fraction — x over y',                  '\\frac{x}{y}'],
+        ['Fraction — x plus y, over 4',          '\\frac{x+y}{4}'],
+        ['Fraction — 22 over 7',                 '\\frac{22}{7}'],
+        ['Fraction — one half, squared',         '\\left(\\frac{1}{2}\\right)^{2}'],
+        ['Mixed number — 5 and one fifth',       '5\\frac{1}{5}'],
+        ['Mixed number — times a whole number',  '3 \\times 5\\frac{1}{5}'],
+        ['Mixed number — divided by a fraction', '3\\frac{1}{2} \\div \\frac{8}{3}'],
+        ['Negative numbers — with a power',      '(-3) \\times (-2)^{3}'],
+        // Brackets and roots
+        ['Brackets — around a fraction',         '\\left( \\frac{a}{b} \\right)'],
+        ['Brackets — around a division',         '\\left( 3\\frac{1}{2} \\div \\frac{8}{3} \\right)'],
+        ['Root — square root of pq',             '\\sqrt{pq}'],
+        ['Root — square root of a fraction',     '\\sqrt{\\frac{3}{2}}'],
+        ['Root — pth root of a',                 '\\sqrt[p]{a}'],
+        ['Root — 4th root of a fraction',        '\\sqrt[4]{\\frac{3}{2}}'],
+        ['Pi — equals 22 over 7',                '\\pi = \\frac{22}{7}'],
+        // Algebra
+        ['Algebra — (a + b) squared',            '(a+b)^{2} = a^{2} + 2ab + b^{2}'],
+        ['Algebra — (a - b) squared',            '(a-b)^{2} = a^{2} - 2ab + b^{2}'],
+        ['Algebra — difference of two squares',  'a^{2} - b^{2} = (a+b)(a-b)'],
+        ['Algebra — quadratic equation',         'ax^{2} + bx + c = 0'],
+        ['Algebra — quadratic formula',          'x = \\frac{-b \\pm \\sqrt{b^{2} - 4ac}}{2a}'],
+        // Geometry and mensuration
+        ['Geometry — Pythagoras theorem',        'a^{2} + b^{2} = c^{2}'],
+        ['Geometry — angles of a triangle',      '\\angle A + \\angle B + \\angle C = 180^{\\circ}'],
+        ['Geometry — area of a circle',          'A = \\pi r^{2}'],
+        ['Geometry — circumference of a circle', 'C = 2 \\pi r'],
+        ['Geometry — area of a triangle',        'A = \\frac{1}{2} \\times b \\times h'],
+        ['Geometry — volume of a cylinder',      'V = \\pi r^{2} h'],
+        ['Geometry — volume of a sphere',        'V = \\frac{4}{3} \\pi r^{3}'],
+        // Trigonometry
+        ['Trigonometry — sine ratio',            '\\sin\\theta = \\frac{\\text{Opposite}}{\\text{Hypotenuse}}'],
+        ['Trigonometry — main identity',         '\\sin^{2}\\theta + \\cos^{2}\\theta = 1'],
+        // Statistics and probability
+        ['Statistics — mean',                    '\\bar{x} = \\frac{\\sum x_{i}}{n}'],
+        ['Probability — of an event',            'P(E) = \\frac{\\text{Favourable outcomes}}{\\text{Total outcomes}}'],
+        // Physics
+        ['Physics — speed',                      '\\text{Speed} = \\frac{\\text{Distance}}{\\text{Time}}'],
+        ['Physics — force',                      'F = ma'],
+        ["Physics — Ohm's law",                  'V = IR'],
+        ['Physics — work done',                  'W = F \\times s'],
+        ['Physics — power',                      'P = \\frac{W}{t}'],
+        ['Physics — kinetic energy',             'E_{k} = \\frac{1}{2} m v^{2}'],
+        ['Physics — potential energy',           'E_{p} = mgh'],
+        ['Physics — density',                    '\\rho = \\frac{m}{V}'],
+        ['Physics — motion, first equation',     'v = u + at'],
+        ['Physics — motion, second equation',    's = ut + \\frac{1}{2} a t^{2}'],
+        ['Physics — motion, third equation',     'v^{2} - u^{2} = 2as'],
+        ['Physics — law of gravitation',         'F = G \\frac{m_{1} m_{2}}{r^{2}}'],
+        ['Physics — mass and energy',            'E = mc^{2}'],
+        // Chemistry
+        ['Chemistry — water',                    '\\mathrm{H_{2}O}'],
+        ['Chemistry — number of moles',          'n = \\frac{m}{M}'],
+        ['Chemistry — making common salt',       '\\mathrm{Na^{+}} + \\mathrm{Cl^{-}} \\rightarrow \\mathrm{NaCl}'],
+        ['Chemistry — heating limestone',        '\\mathrm{CaCO_{3}} \\xrightarrow{\\Delta} \\mathrm{CaO} + \\mathrm{CO_{2}}'],
+        ['Chemistry — reversible reaction',      '\\mathrm{N_{2}} + 3\\mathrm{H_{2}} \\rightleftharpoons 2\\mathrm{NH_{3}}'],
+        ['Chemistry — photosynthesis',           '6\\mathrm{CO_{2}} + 6\\mathrm{H_{2}O} \\rightarrow \\mathrm{C_{6}H_{12}O_{6}} + 6\\mathrm{O_{2}}'],
     ];
 
     // ── Sizes in POINTS ───────────────────────────────────────────────────────
@@ -270,7 +330,11 @@
 
     // ── Build the dialog ──────────────────────────────────────────────────────
     const dlg = Dialog.create('Equation Editor');
-    dlg.initialWidth = 520;
+    // Affinity gives scripts no control over font size or control height, so
+    // the only way to make the symbol buttons bigger is to give them more room:
+    // a wider dialog divided by the same five columns. Drag the dialog wider
+    // still and they grow with it.
+    dlg.initialWidth = 760;
     dlg.setIsResizable(true);
 
     const col = dlg.addColumn();

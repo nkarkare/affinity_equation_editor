@@ -135,6 +135,36 @@ node katex_server.js --port 3738     # run a second one alongside
 
 ---
 
+## Built for CBSE
+
+The symbol palette and the ready-made list are aimed at **CBSE maths and science, classes 6–12** — not university material.
+
+**60 symbols**, five across:
+
+| Row | What it covers |
+|---|---|
+| 1–2 | Number work and comparing — `± × ÷ · ≠ ≤ ≥ ≈ ≡ ∝` |
+| 3–4 | Powers, roots and fractions — `x² x³ xⁿ √ ∛ a/b ½ 22/7 5⅕ xₙ` |
+| 5–6 | Geometry — `° ∠ ⊥ ∥ △ □ ≅ ∼ ∴ ∵` |
+| 7 | Sets — `∈ ∉ ⊂ ∪ ∩` |
+| 8–9 | Greek and science letters — `α β θ π λ μ ρ Δ Ω ∞` |
+| 10–11 | Arrows and reactions — `→ ← ↑ ↓ ↔ ⇌ ⇒ ⇔ Δ→ ∅` |
+| 12 | Trigonometry and averages — `sin cos tan Σ x̄` |
+
+**52 ready-made equations**, each named by its topic so the list reads like a menu:
+
+- **Fraction / Mixed number** — halves, 22⁄7, mixed numbers, squaring a fraction
+- **Brackets / Root** — `√(pq)`, `ᵖ√a`, roots of fractions
+- **Algebra** — `(a±b)²`, difference of squares, quadratic equation and formula
+- **Geometry** — Pythagoras, angle sum, areas and volumes of circle, triangle, cylinder, sphere
+- **Trigonometry / Statistics / Probability** — sine ratio, `sin²θ + cos²θ = 1`, mean, `P(E)`
+- **Physics** — speed, `F = ma`, Ohm's law, work, power, kinetic and potential energy, density, the three equations of motion, gravitation, `E = mc²`
+- **Chemistry** — water, moles, common salt, heating limestone, a reversible reaction, photosynthesis
+
+> **Symbols look small?** Affinity gives scripts no control over font size in a dialog, so the buttons cannot be made taller. They do get wider with the dialog — drag its edge and they grow.
+
+---
+
 ## LaTeX support
 
 Every MathJax 3 package is loaded — fractions, integrals, sums, Greek letters, matrices, aligned environments, cases, `\mathbb`, `\mathbf`, `\text`, and so on.
