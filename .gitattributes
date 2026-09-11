@@ -1,0 +1,10 @@
+# Windows launchers must keep CRLF. cmd.exe can mis-parse a .bat with LF
+# endings (goto labels and blocks in particular), and these files have to
+# survive a clone or a release zip made on any platform.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Everything else is normal text.
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
