@@ -35,7 +35,7 @@ Affinity has no way for a script to hook a double-click on a layer, so double-cl
 
 | File | Purpose |
 |---|---|
-| `Start Equation Editor.bat` | **Double-click this.** Installs, updates and starts everything |
+| `Start Affinity and Equation Editor.bat` | **Double-click this.** Installs, updates and starts everything |
 | `launcher/bootstrap.ps1` | What the .bat actually runs — the setup steps |
 | `equation_editor.js` | The Affinity Publisher script — **this is the main deliverable** |
 | `FixWorksheetFonts.js` | Separate script: PrintClearly → PrintClearly-Bold |
@@ -68,7 +68,7 @@ node tools/stamp-version.js --check          # fail if the date is stale
 Download the project (green **Code** button → **Download ZIP**), unzip it, and double-click:
 
 ```
-Start Equation Editor.bat
+Start Affinity and Equation Editor.bat
 ```
 
 That is the whole thing. It will:
@@ -90,9 +90,9 @@ Run it again any time — it updates itself and picks up where it left off.
 
 | Want more detail? | Run |
 |---|---|
-| Log every render | `"Start Equation Editor.bat" --debug` |
-| Log even more, including failed drawings | `"Start Equation Editor.bat" --trace` |
-| Set up but do not start the server | `"Start Equation Editor.bat" --setup` |
+| Log every render | `"Start Affinity and Equation Editor.bat" --debug` |
+| Log even more, including failed drawings | `"Start Affinity and Equation Editor.bat" --trace` |
+| Set up but do not start the server | `"Start Affinity and Equation Editor.bat" --setup` |
 
 > Keep the quotes. The name begins with `Start`, which is also a built-in Command Prompt keyword, so without them cmd runs the wrong thing.
 

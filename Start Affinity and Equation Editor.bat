@@ -3,12 +3,15 @@ REM ===========================================================
 REM  Affinity Equation Editor — double-click this file.
 REM
 REM  It installs anything that is missing, fetches the newest
-REM  version, and starts the maths server.
+REM  version, opens Affinity and Script Manager, and starts
+REM  the maths server.
 REM
-REM  Options (drag the file into a terminal to use them):
-REM     "Start Equation Editor.bat" --debug     log every render
-REM     "Start Equation Editor.bat" --trace     log even more
-REM     "Start Equation Editor.bat" --setup     set up, do not start
+REM  Options (drag the file into a terminal to use them).
+REM  KEEP THE QUOTES -- the name starts with "Start", which
+REM  Command Prompt treats as a keyword of its own:
+REM     "Start Affinity and Equation Editor.bat" --debug   log every render
+REM     "Start Affinity and Equation Editor.bat" --trace   log even more
+REM     "Start Affinity and Equation Editor.bat" --setup   set up, do not start
 REM ===========================================================
 
 setlocal
