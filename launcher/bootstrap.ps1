@@ -328,21 +328,76 @@ try { Set-Clipboard -Value $SCRIPT_JS; $copied = $true } catch { }
 if (-not $copied) {
     try { $SCRIPT_JS | clip.exe; $copied = $true } catch { }
 }
-if ($copied) { Good 'That path is copied — just paste it into Affinity' }
+if ($copied) { Good 'That path is copied, in case you need it' }
+
+# ── Hand it to Script Manager, if it is installed ─────────────────────────────
+# Script Manager for Affinity (github.com/JiriKrblich/Affinity-script-manager)
+# watches its MyScripts folder. When a file there changes AND a script of the
+# same name is already installed in Affinity, it re-pushes it automatically —
+# which is the only way to avoid re-adding this script by hand after every
+# update, because Affinity itself stores a copy rather than a link.
+#
+# The match is filename against installed title, so the file has to be named
+# exactly after the "name:" field in the script header: "Equation Editor.js".
+$smData    = Join-Path $env:APPDATA 'affinity-script-manager'
+$smScripts = Join-Path $smData 'MyScripts'
+$smExe     = Join-Path $env:LOCALAPPDATA 'Programs\affinity-script-manager\Script Manager for Affinity.exe'
+$smTarget  = Join-Path $smScripts 'Equation Editor.js'
+$usingSM   = $false
+
+if (Test-Path $smData) {
+    $usingSM = $true
+    Step 'Script Manager'
+    try {
+        if (-not (Test-Path $smScripts)) { New-Item -ItemType Directory -Path $smScripts -Force | Out-Null }
+        Copy-Item $SCRIPT_JS $smTarget -Force
+        Good 'Copied into Script Manager as "Equation Editor"'
+    } catch {
+        Warn "Could not copy it in: $($_.Exception.Message)"
+        $usingSM = $false
+    }
+
+    if ($usingSM -and (Test-Path $smExe)) {
+        $running = Get-Process -Name 'Script Manager for Affinity' -ErrorAction SilentlyContinue
+        if ($running) {
+            Good 'Script Manager is already running — it will pick this up'
+        } else {
+            try {
+                Start-Process $smExe
+                Good 'Started Script Manager'
+            } catch {
+                Warn 'Could not start Script Manager — open it yourself.'
+            }
+        }
+    }
+}
 
 Say ''
 Say '  -------------------------------------------------------'
-Say '   To put this into Affinity (only needed once, and'
-Say '   again whenever the script itself changes):'
-Say ''
-Say '     1. Open Affinity Publisher'
-Say '     2. Menu:  View  >  Studio  >  Scripts'
-Say '     3. Click the  +  (or Add) button'
-Say '     4. Paste the path with Ctrl+V and press Enter'
-Say ''
-Say '   Affinity keeps its own copy of the script, so after'
-Say '   an update you have to add it again to get the newest'
-Say '   one. The maths server updates on its own.'
+if ($usingSM) {
+    Say '   FIRST TIME ONLY:'
+    Say ''
+    Say '     1. Open Affinity Publisher and leave it open'
+    Say '     2. In Script Manager, find "Equation Editor"'
+    Say '        under My Scripts'
+    Say '     3. Click the install dot next to it'
+    Say ''
+    Say '   After that it updates itself. Run this file again'
+    Say '   and the newest version goes straight into Affinity,'
+    Say '   as long as Affinity and Script Manager are open.'
+} else {
+    Say '   To put this into Affinity (only needed once, and'
+    Say '   again whenever the script itself changes):'
+    Say ''
+    Say '     1. Open Affinity Publisher'
+    Say '     2. Menu:  View  >  Studio  >  Scripts'
+    Say '     3. Click the  +  (or Add) button'
+    Say '     4. Paste the path with Ctrl+V and press Enter'
+    Say ''
+    Say '   Affinity keeps its own copy of the script, so after'
+    Say '   an update you have to add it again to get the newest'
+    Say '   one. The maths server updates on its own.'
+}
 Say '  -------------------------------------------------------'
 
 if ($NoStart) {

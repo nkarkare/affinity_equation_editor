@@ -75,11 +75,11 @@ if (check) {
 let out = src
     .replace(/const VERSION\s*=\s*'[^']*'/,   "const VERSION   = '" + version + "'")
     .replace(/const PUBLISHED\s*=\s*'[^']*'/, "const PUBLISHED = '" + date + "'")
-    // The header block feeds Affinity's Scripts panel, so it carries the date
-    // too — that way a stale copy is visible in the list without opening it.
-    .replace(/^(\s\*\sname:\s*Equation Editor).*$/m, '$1 (' + date + ')')
-    .replace(/^(\s\*\s+and change equations you already made\.).*$/m,
-             '$1  v' + version + ', ' + date + '.');
+    // The header's version field is what Script Manager reads and shows. The
+    // name field is deliberately left alone: Script Manager matches the
+    // installed title against the filename to decide whether it may auto-update
+    // a script, and a name that changes every release would break that.
+    .replace(/^(\s\*\sversion:\s*).*$/m, '$1' + version + ' (' + date + ')');
 
 if (out === src) {
     if (!quiet) console.log('stamp-version: already up to date (v' + version + ', ' + date + ')');

@@ -1,8 +1,15 @@
 /**
- * name: Equation Editor (11 Sep 2026)
+ * name: Equation Editor
+ * version: 6.1.0 (11 Sep 2026)
  * category: Tools
  * description: LaTeX equation editor for Affinity Publisher — add new equations
- *              and change equations you already made.  v6.1.0, 11 Sep 2026.
+ *              and change equations you already made.
+ *
+ *              KEEP THE NAME AND THE FILENAME THE SAME. Script Manager only
+ *              auto-updates a script in Affinity when the filename in its
+ *              MyScripts folder matches the installed title, which it takes
+ *              from the name field above. Putting the date in the name would
+ *              break that on every release, which is why it lives in version.
  *
  *              WHAT IT DOES:
  *              • Opens with "Add a NEW equation" chosen. Your old equations are

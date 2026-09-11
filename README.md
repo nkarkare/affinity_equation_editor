@@ -100,14 +100,23 @@ Run it again any time — it updates itself and picks up where it left off.
 
 You only repeat that when `equation_editor.js` itself changes. The maths server updates on its own.
 
+### Automatic updates, via Script Manager
+
+If you have [Script Manager for Affinity](https://github.com/JiriKrblich/Affinity-script-manager) installed, the launcher copies the script into its **My Scripts** folder and starts it. Script Manager watches that folder, and when a file changes it re-pushes it into Affinity — so after a one-time setup you never add the script by hand again.
+
+**First time only:**
+
+1. Open Affinity Publisher and leave it open
+2. In Script Manager, find **Equation Editor** under My Scripts
+3. Click the install dot next to it
+
+After that, running the launcher is enough: the newest version goes straight into Affinity, as long as both Affinity and Script Manager are open.
+
+> **Why the name never changes.** Script Manager only auto-updates a script when the filename in My Scripts matches the title already installed in Affinity. The script is therefore always called `Equation Editor` — put the date in the name and auto-update would break on every release. The date lives in the `version:` header field instead, which Script Manager displays.
+
 ### Which version is Affinity running?
 
-Because Affinity holds its own copy, the script wears its publish date where you cannot miss it:
-
-- **Scripts panel** — listed as `Equation Editor (11 Sep 2026)`
-- **Dialog title** — `Equation Editor   v6.1.0   •   11 Sep 2026`
-
-If that date is older than the one the launcher just printed, Affinity is running a stale copy. Add the file again and delete the old entry.
+The dialog title says so: `Equation Editor   v6.1.0   •   11 Sep 2026`. If that is older than what the launcher just printed, Affinity is still holding an older copy.
 
 ---
 
