@@ -1,4 +1,4 @@
-# Affinity Equation Editor — one-click setup and start
+﻿# Affinity Equation Editor — one-click setup and start
 # -----------------------------------------------------
 # Gets Node if it is missing, downloads the newest code, installs what the
 # render server needs, and starts it. Safe to run again any time.
@@ -250,19 +250,50 @@ if (Test-Path $mathjax) {
     Good 'Already installed'
 } else {
     Say '    Installing MathJax. First time only, please wait...'
-    Push-Location $serverDir
-    try {
-        & $npm install --no-audit --no-fund --loglevel=error 2>&1 | ForEach-Object { Write-Host "    $_" }
-    } finally {
-        Pop-Location
+
+    # A dropped connection part-way through a download is common enough on
+    # school and office networks to be worth simply trying again.
+    $lastOutput = ''
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        if ($attempt -gt 1) {
+            Warn "That did not work. Trying again ($attempt of 3)..."
+            Start-Sleep -Seconds 3
+        }
+        Push-Location $serverDir
+        try {
+            # 2>&1 on a native command makes PowerShell treat stderr lines as
+            # errors, so it is routed to a plain string instead.
+            $lastOutput = (& $npm install --no-audit --no-fund --loglevel=error *>&1 | Out-String)
+        } catch {
+            $lastOutput = $_.Exception.Message
+        } finally {
+            Pop-Location
+        }
+        if (Test-Path $mathjax) { break }
     }
+
     if (Test-Path $mathjax) {
         Good 'MathJax installed'
     } else {
-        Stop-Here 'MathJax could not be installed.' @(
+        $hint = @(
             'Check that this PC is connected to the internet.',
             'Then run this file again.'
         )
+        if ($lastOutput -match 'ECONNRESET|ETIMEDOUT|ENOTFOUND|network|proxy') {
+            $hint = @(
+                'This PC could not reach registry.npmjs.org.',
+                'If you are on a school or office network, that address may be blocked —',
+                '  ask IT to allow it, or try again on a home network.',
+                'If you use a proxy, run:  npm config set proxy http://YOUR-PROXY:PORT',
+                'Then run this file again.'
+            )
+        }
+        Say ''
+        Say '    npm said:'
+        foreach ($line in ($lastOutput -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 6)) {
+            Say "      $line"
+        }
+        Stop-Here 'The maths engine could not be installed.' $hint
     }
 }
 
@@ -307,10 +338,24 @@ if ($NoStart) {
 Step 'Starting the maths server'
 
 # Something already on the port is almost always this same server from earlier.
-$busy = $null
-try {
-    $busy = Invoke-WebRequest -Uri "http://localhost:$Port/health" -TimeoutSec 2 -UseBasicParsing
-} catch { }
+# A plain TCP connect answers instantly, where the first Invoke-WebRequest of a
+# session can spend longer than that just warming up and time out on a server
+# that is in fact running.
+function Test-PortOpen ($portNumber) {
+    $client = New-Object Net.Sockets.TcpClient
+    try {
+        $async = $client.BeginConnect('127.0.0.1', $portNumber, $null, $null)
+        if (-not $async.AsyncWaitHandle.WaitOne(1500, $false)) { return $false }
+        $client.EndConnect($async)
+        return $true
+    } catch {
+        return $false
+    } finally {
+        $client.Close()
+    }
+}
+
+$busy = Test-PortOpen $Port
 
 if ($busy) {
     Good "Already running on port $Port"

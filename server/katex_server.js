@@ -76,7 +76,44 @@ async function bootMathJax() {
     // be imported so that it registers itself first. Without this line \dfrac,
     // \begin{pmatrix}, \begin{align} and every other AMS command came back as
     // "Undefined control sequence". Importing AllPackages registers the lot.
-    const { AllPackages } = await import('mathjax-full/js/input/tex/AllPackages.js');
+    //
+    // AllPackages also drags in mhchem and physics, which need extra modules of
+    // their own. If an install is incomplete, loading the lot throws and the
+    // server would refuse to start at all — so a core set is loaded one by one
+    // as a fallback. Better to draw fractions and matrices than nothing.
+    let packages;
+    try {
+        const { AllPackages } = await import('mathjax-full/js/input/tex/AllPackages.js');
+        packages = AllPackages;
+        debugLog('loaded AllPackages');
+    } catch (e) {
+        console.log('');
+        console.log('Note: not every MathJax add-on could be loaded (' + e.message.split('\n')[0] + ').');
+        console.log('Loading the main ones instead. Fractions, matrices and Greek letters will work.');
+        console.log('To get all of them back:  npm install');
+        console.log('');
+
+        packages = ['base'];
+        const core = [
+            ['ams',        'ams/AmsConfiguration.js'],
+            ['boldsymbol', 'boldsymbol/BoldsymbolConfiguration.js'],
+            ['newcommand', 'newcommand/NewcommandConfiguration.js'],
+            ['cases',      'cases/CasesConfiguration.js'],
+            ['color',      'color/ColorConfiguration.js'],
+            ['enclose',    'enclose/EncloseConfiguration.js'],
+            ['textmacros', 'textmacros/TextMacrosConfiguration.js'],
+            ['unicode',    'unicode/UnicodeConfiguration.js'],
+        ];
+        await import('mathjax-full/js/input/tex/base/BaseConfiguration.js');
+        for (const [name, file] of core) {
+            try {
+                await import('mathjax-full/js/input/tex/' + file);
+                packages.push(name);
+            } catch (_) {
+                debugLog('skipped package', name);
+            }
+        }
+    }
 
     const adaptor = liteAdaptor();
     RegisterHTMLHandler(adaptor);
@@ -85,7 +122,7 @@ async function bootMathJax() {
     // mistakes and quietly draw red "\dfrac" text into the page instead. Left
     // out, a bad formula produces a proper error that the Affinity script can
     // catch and explain in plain words — far better than a mystery on the page.
-    const packages = AllPackages.filter(p => p !== 'noerrors' && p !== 'noundefined');
+    packages = packages.filter(p => p !== 'noerrors' && p !== 'noundefined');
 
     const doc = mathjax.document('', {
         InputJax:  new TeX({
