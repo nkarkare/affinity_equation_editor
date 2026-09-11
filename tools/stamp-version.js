@@ -79,7 +79,11 @@ let out = src
     // name field is deliberately left alone: Script Manager matches the
     // installed title against the filename to decide whether it may auto-update
     // a script, and a name that changes every release would break that.
-    .replace(/^(\s\*\sversion:\s*).*$/m, '$1' + version + ' (' + date + ')');
+    .replace(/^(\s\*\sversion:\s*).*$/m, '$1' + version + ' (' + date + ')')
+    // The description leads with the same stamp, because that is the one other
+    // field Affinity stores alongside the title.
+    .replace(/^(\s\*\sdescription:\s*)v[\d.]+\s·\s.*?—/m,
+             '$1v' + version + ' · ' + date + ' —');
 
 if (out === src) {
     if (!quiet) console.log('stamp-version: already up to date (v' + version + ', ' + date + ')');
