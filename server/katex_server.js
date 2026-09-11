@@ -9,11 +9,17 @@
  *   npm install mathjax-full
  *
  * START:
- *   node katex_server.js
+ *   node katex_server.js                 normal
+ *   node katex_server.js --debug         log every render: timing, size, errors
+ *   node katex_server.js --trace         --debug plus the full SVG of failures
+ *   node katex_server.js --port 4000     use a different port
  *
  * API:
- *   GET http://localhost:3737?from=\frac{a}{b}   → SVG text
- *   GET http://localhost:3737/health              → {"status":"ok"}
+ *   GET /?from=\frac{a}{b}   → SVG text
+ *   GET /health              → {"status":"ok", ...}
+ *   GET /debug               → what the server has rendered so far, and every
+ *                              failure it has seen. Open it in a browser when
+ *                              an equation will not draw.
  *
  * The Affinity script calls this automatically before falling back to the cloud.
  */
@@ -21,7 +27,41 @@
 'use strict';
 
 const http = require('http');
-const PORT = 3737;
+
+// ── Options ───────────────────────────────────────────────────────────────────
+const ARGS  = process.argv.slice(2);
+const TRACE = ARGS.includes('--trace');
+const DEBUG = TRACE || ARGS.includes('--debug') || process.env.EQ_DEBUG === '1';
+const PORT  = (function () {
+    const i = ARGS.indexOf('--port');
+    const p = i >= 0 ? parseInt(ARGS[i + 1], 10) : parseInt(process.env.EQ_PORT, 10);
+    return Number.isInteger(p) && p > 0 && p < 65536 ? p : 3737;
+})();
+
+// ── Render log ────────────────────────────────────────────────────────────────
+// Kept in memory and served at /debug, so a failing equation can be diagnosed
+// without reading the terminal or restarting anything.
+const MAX_LOG = 100;
+const stats   = { started: new Date().toISOString(), ok: 0, failed: 0, engine: null };
+const history = [];
+const failures = [];
+
+function record(entry) {
+    history.unshift(entry);
+    if (history.length > MAX_LOG) history.pop();
+    if (entry.error) {
+        failures.unshift(entry);
+        if (failures.length > MAX_LOG) failures.pop();
+        stats.failed++;
+    } else {
+        stats.ok++;
+    }
+}
+
+function debugLog() {
+    if (!DEBUG) return;
+    console.log('[debug] ' + Array.from(arguments).join(' '));
+}
 
 // ── Boot MathJax ──────────────────────────────────────────────────────────────
 // mathjax-full is ESM; use dynamic import() from CJS. Requires Node 14+.
@@ -57,7 +97,7 @@ async function bootMathJax() {
         }),
     });
 
-    return { mathjax, adaptor, doc };
+    return { mathjax, adaptor, doc, packageCount: packages.length };
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -79,16 +119,42 @@ function renderSVG(ctx, latex, display) {
     return svg;
 }
 
+// ── Look the drawing over before sending it ──────────────────────────────────
+// A bad formula still comes back as a valid SVG — a picture of an error
+// message. Spotting that here means the log says what actually went wrong
+// instead of "200 OK".
+function inspect(svg) {
+    const err = svg.match(/data-mjx-error\s*=\s*("|')([\s\S]*?)\1/);
+    const vb  = svg.match(/viewBox\s*=\s*["']([^"']*)["']/);
+    const box = vb ? vb[1].split(/[\s,]+/).map(Number) : null;
+    return {
+        error:  err ? err[2].replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&') : null,
+        paths:  (svg.match(/<path/g) || []).length,
+        rects:  (svg.match(/<rect/g) || []).length,
+        viewBox: vb ? vb[1] : null,
+        // Height in ems tells you at a glance whether the shape looks sane:
+        // MathJax draws 1000 viewBox units to one em.
+        ems:    box && box[3] ? +(box[3] / 1000).toFixed(2) : null,
+        bytes:  svg.length,
+    };
+}
+
 // ── Server ────────────────────────────────────────────────────────────────────
 (async () => {
     let ctx;
     try {
         process.stdout.write('Loading MathJax 3… ');
         ctx = await bootMathJax();
-        console.log('ready.');
+        try {
+            const pkg = require('mathjax-full/package.json');
+            stats.engine = 'mathjax ' + pkg.version;
+        } catch (_) { stats.engine = 'mathjax3'; }
+        console.log('ready.  (' + stats.engine + ', node ' + process.version + ')');
+        debugLog('packages loaded:', ctx.packageCount);
     } catch (e) {
         console.error('\n\nFailed to load MathJax:', e.message);
         console.error('Run:  npm install mathjax-full');
+        if (TRACE && e.stack) console.error(e.stack);
         process.exit(1);
     }
 
@@ -98,7 +164,18 @@ function renderSVG(ctx, latex, display) {
         // Health check
         if (url.pathname === '/health') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'ok', engine: 'mathjax3' }));
+            res.end(JSON.stringify({
+                status: 'ok', engine: stats.engine || 'mathjax3',
+                debug: DEBUG, port: PORT,
+                rendered: stats.ok, failed: stats.failed, since: stats.started,
+            }));
+            return;
+        }
+
+        // Everything the server has drawn, and everything that went wrong.
+        if (url.pathname === '/debug') {
+            res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end(debugReport());
             return;
         }
 
@@ -111,24 +188,118 @@ function renderSVG(ctx, latex, display) {
             return;
         }
 
+        const started = Date.now();
         try {
-            const svg = renderSVG(ctx, latex, display);
+            const svg  = renderSVG(ctx, latex, display);
+            const info = inspect(svg);
+            const ms   = Date.now() - started;
+
+            record({ at: new Date().toISOString(), latex, ms, error: info.error, info });
+
             res.writeHead(200, {
                 'Content-Type':                'image/svg+xml; charset=utf-8',
                 'Access-Control-Allow-Origin': '*',
                 'Cache-Control':               'no-store',
+                // Handy from curl, and harmless to Affinity.
+                'X-Eq-Render-Ms':              String(ms),
+                'X-Eq-Paths':                  String(info.paths),
+                'X-Eq-Error':                  info.error ? encodeURIComponent(info.error) : '',
             });
             res.end(svg);
-            console.log('[render] ' + latex.slice(0, 60) + (latex.length > 60 ? '…' : ''));
+
+            const short = latex.length > 60 ? latex.slice(0, 60) + '…' : latex;
+            if (info.error) {
+                // A 200 that is really a picture of an error message. Say so.
+                console.log('[BAD MATHS] ' + short);
+                console.log('            ' + info.error);
+                if (TRACE) console.log('            ' + svg.replace(/\s+/g, ' ').slice(0, 800));
+            } else if (DEBUG) {
+                console.log('[render] ' + short);
+                console.log('         ' + ms + 'ms  ' + info.paths + ' paths  ' + info.rects +
+                            ' rects  ' + info.ems + ' em tall  ' + info.bytes + ' bytes');
+            } else {
+                console.log('[render] ' + short);
+            }
         } catch (e) {
+            const ms = Date.now() - started;
+            record({ at: new Date().toISOString(), latex, ms, error: e.message, info: null });
             res.writeHead(422, { 'Content-Type': 'text/plain' });
             res.end('Render error: ' + e.message);
             console.error('[error] ' + e.message);
+            if (TRACE && e.stack) console.error(e.stack);
         }
     });
 
     server.listen(PORT, '127.0.0.1', () => {
-        console.log(`\nListening on http://localhost:${PORT}`);
+        console.log('\nListening on http://localhost:' + PORT);
+        if (DEBUG) {
+            console.log('Debug logging is ON' + (TRACE ? ' (with --trace)' : '') + '.');
+        } else {
+            console.log('Tip: restart with  --debug  to log every render in detail.');
+        }
+        console.log('Recent renders and failures: http://localhost:' + PORT + '/debug');
         console.log('Press Ctrl+C to stop.\n');
     });
+
+    server.on('error', (e) => {
+        if (e.code === 'EADDRINUSE') {
+            console.error('\nPort ' + PORT + ' is already being used.');
+            console.error('Another copy of this server is probably already running.');
+            console.error('Check it with:  curl http://localhost:' + PORT + '/health');
+            console.error('Or start this one elsewhere:  node katex_server.js --port 3738\n');
+        } else {
+            console.error('\nServer error: ' + e.message + '\n');
+        }
+        process.exit(1);
+    });
 })();
+
+// ── The /debug page ───────────────────────────────────────────────────────────
+function debugReport() {
+    const L = [];
+    L.push('Affinity Equation Renderer — debug report');
+    L.push('='.repeat(60));
+    L.push('');
+    L.push('Engine        : ' + (stats.engine || 'mathjax3'));
+    L.push('Port          : ' + PORT);
+    L.push('Debug logging : ' + (DEBUG ? (TRACE ? 'on (--trace)' : 'on (--debug)') : 'off'));
+    L.push('Running since : ' + stats.started);
+    L.push('Node          : ' + process.version);
+    L.push('Drawn OK      : ' + stats.ok);
+    L.push('Failed        : ' + stats.failed);
+    L.push('');
+
+    if (!history.length) {
+        L.push('Nothing has been drawn yet.');
+        L.push('');
+        L.push('Make an equation in Affinity, then reload this page.');
+        return L.join('\n');
+    }
+
+    if (failures.length) {
+        L.push('-'.repeat(60));
+        L.push('FORMULAS THAT DID NOT WORK  (newest first)');
+        L.push('-'.repeat(60));
+        failures.forEach((f, i) => {
+            L.push('');
+            L.push((i + 1) + '.  ' + f.at);
+            L.push('    you typed : ' + f.latex);
+            L.push('    problem   : ' + f.error);
+        });
+        L.push('');
+    }
+
+    L.push('-'.repeat(60));
+    L.push('EVERY RENDER  (newest first, last ' + MAX_LOG + ')');
+    L.push('-'.repeat(60));
+    history.forEach((h, i) => {
+        const tag = h.error ? 'FAILED' : 'ok    ';
+        const size = h.info ? (h.info.paths + ' paths, ' + h.info.ems + ' em') : '';
+        L.push('');
+        L.push((i + 1) + '.  ' + tag + '  ' + h.ms + 'ms  ' + size);
+        L.push('    ' + h.latex);
+        if (h.error) L.push('    → ' + h.error);
+    });
+
+    return L.join('\n');
+}
