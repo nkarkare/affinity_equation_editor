@@ -76,7 +76,7 @@ That is the whole thing. It will:
 1. Install **Node.js** if this PC does not have it
 2. Download the **newest version** of the script and server
 3. Install the maths engine (first run only — it takes a minute)
-4. Copy the script's path to your clipboard and open the folder
+4. Copy the script's path to your clipboard
 5. Start the maths server and leave it running
 
 Leave that black window open while you work. Closing it turns the maths off.
@@ -107,7 +107,7 @@ Because Affinity holds its own copy, the script wears its publish date where you
 - **Scripts panel** — listed as `Equation Editor (11 Sep 2026)`
 - **Dialog title** — `Equation Editor   v6.1.0   •   11 Sep 2026`
 
-If that date is older than the one in the folder the launcher opened, Affinity is running a stale copy. Add the file again and delete the old entry.
+If that date is older than the one the launcher just printed, Affinity is running a stale copy. Add the file again and delete the old entry.
 
 ---
 
@@ -167,17 +167,16 @@ node katex_server.js --port 3738     # run a second one alongside
 
 The symbol palette and the ready-made list are aimed at **CBSE maths and science, classes 6–12** — not university material.
 
-**60 symbols**, five across:
+**60 symbols**, ten across in six rows:
 
 | Row | What it covers |
 |---|---|
-| 1–2 | Number work and comparing — `± × ÷ · ≠ ≤ ≥ ≈ ≡ ∝` |
-| 3–4 | Powers, roots and fractions — `x² x³ xⁿ √ ∛ a/b ½ 22/7 5⅕ xₙ` |
-| 5–6 | Geometry — `° ∠ ⊥ ∥ △ □ ≅ ∼ ∴ ∵` |
-| 7 | Sets — `∈ ∉ ⊂ ∪ ∩` |
-| 8–9 | Greek and science letters — `α β θ π λ μ ρ Δ Ω ∞` |
-| 10–11 | Arrows and reactions — `→ ← ↑ ↓ ↔ ⇌ ⇒ ⇔ Δ→ ∅` |
-| 12 | Trigonometry and averages — `sin cos tan Σ x̄` |
+| 1 | Number work, then comparing — `± × ÷ · ≠` `≤ ≥ ≈ ≡ ∝` |
+| 2 | Powers and roots, then fractions — `x² x³ xⁿ √ ∛` `a/b ½ 22/7 5⅕ xₙ` |
+| 3 | Geometry, then shapes and reasoning — `° ∠ ⊥ ∥ △` `□ ≅ ∼ ∴ ∵` |
+| 4 | Sets, then Greek letters — `∈ ∉ ⊂ ∪ ∩` `α β θ π λ` |
+| 5 | Science letters, then arrows — `μ ρ Δ Ω ∞` `→ ← ↑ ↓ ↔` |
+| 6 | Reactions and logic, then trigonometry — `⇌ ⇒ ⇔ Δ→ ∅` `sin cos tan Σ x̄` |
 
 **52 ready-made equations**, each named by its topic so the list reads like a menu:
 
@@ -189,7 +188,7 @@ The symbol palette and the ready-made list are aimed at **CBSE maths and science
 - **Physics** — speed, `F = ma`, Ohm's law, work, power, kinetic and potential energy, density, the three equations of motion, gravitation, `E = mc²`
 - **Chemistry** — water, moles, common salt, heating limestone, a reversible reaction, photosynthesis
 
-> **Symbols look small?** Affinity gives scripts no control over font size in a dialog, so the buttons cannot be made taller. They do get wider with the dialog — drag its edge and they grow.
+> **Symbols look small?** Affinity gives scripts no control over font size in a dialog, so the glyphs are whatever size the Affinity UI font is — widening the dialog only stretches each button sideways without making its symbol any bigger. The grid is 10 across in a 560px dialog, which keeps the whole window short enough for a laptop screen.
 
 ---
 

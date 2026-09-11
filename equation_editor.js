@@ -43,36 +43,33 @@
     const { AddChildNodesCommandBuilder, InsertionMode } = require('/commands');
     const { Document }                                   = require('/document');
 
-    // ── 60 symbols for CBSE maths and science — 5 columns × 12 rows ───────────
+    // ── 60 symbols for CBSE maths and science — 10 columns × 6 rows ───────────
     // Chosen for classes 6-12. Buttons append to the end of the box, so every
     // one of these has to read correctly both on its own and after whatever is
     // already typed. The power buttons carry their own base (x^{2}, not a bare
     // ^{2}) so that clicking one into an empty box still gives something
     // sensible rather than a lone floating exponent.
+    //
+    // Written below in half-rows of five, two of which make up each row on
+    // screen. Keep the count a multiple of ten or the last row comes out ragged.
     const SYMBOLS = [
-        // Row 1 — Number work
+        // Screen row 1  —  number work, then comparing
         ['±','\\pm'],            ['×','\\times'],         ['÷','\\div'],           ['·','\\cdot'],          ['≠','\\neq'],
-        // Row 2 — Comparing
         ['≤','\\leq'],           ['≥','\\geq'],           ['≈','\\approx'],        ['≡','\\equiv'],         ['∝','\\propto'],
-        // Row 3 — Powers and roots
+        // Screen row 2  —  powers and roots, then fractions
         ['x²','x^{2}'],          ['x³','x^{3}'],          ['xⁿ','x^{n}'],          ['√','\\sqrt{x}'],       ['∛','\\sqrt[3]{x}'],
-        // Row 4 — Fractions
         ['a/b','\\frac{a}{b}'],  ['½','\\frac{1}{2}'],    ['22/7','\\frac{22}{7}'],['5⅕','5\\frac{1}{5}'],  ['xₙ','x_{n}'],
-        // Row 5 — Geometry
+        // Screen row 3  —  geometry, then shapes and reasoning
         ['°','^{\\circ}'],       ['∠','\\angle'],         ['⊥','\\perp'],          ['∥','\\parallel'],      ['△','\\triangle'],
-        // Row 6 — Shapes and reasoning
         ['□','\\square'],        ['≅','\\cong'],          ['∼','\\sim'],           ['∴','\\therefore'],     ['∵','\\because'],
-        // Row 7 — Sets
+        // Screen row 4  —  sets, then Greek letters
         ['∈','\\in'],            ['∉','\\notin'],         ['⊂','\\subset'],        ['∪','\\cup'],           ['∩','\\cap'],
-        // Row 8 — Greek letters
         ['α','\\alpha'],         ['β','\\beta'],          ['θ','\\theta'],         ['π','\\pi'],            ['λ','\\lambda'],
-        // Row 9 — Science letters
+        // Screen row 5  —  science letters, then arrows
         ['μ','\\mu'],            ['ρ','\\rho'],           ['Δ','\\Delta'],         ['Ω','\\Omega'],         ['∞','\\infty'],
-        // Row 10 — Arrows
         ['→','\\rightarrow'],    ['←','\\leftarrow'],     ['↑','\\uparrow'],       ['↓','\\downarrow'],     ['↔','\\leftrightarrow'],
-        // Row 11 — Reactions and logic
+        // Screen row 6  —  reactions and logic, then trigonometry
         ['⇌','\\rightleftharpoons'], ['⇒','\\Rightarrow'],['⇔','\\Leftrightarrow'],['Δ→','\\xrightarrow{\\Delta}'], ['∅','\\emptyset'],
-        // Row 12 — Trigonometry and averages
         ['sin','\\sin\\theta'],  ['cos','\\cos\\theta'],  ['tan','\\tan\\theta'],  ['Σ','\\sum'],           ['x̄','\\bar{x}'],
     ];
 
@@ -341,11 +338,12 @@
 
     // ── Build the dialog ──────────────────────────────────────────────────────
     const dlg = Dialog.create('Equation Editor   v' + VERSION + '   •   ' + PUBLISHED);
-    // Affinity gives scripts no control over font size or control height, so
-    // the only way to make the symbol buttons bigger is to give them more room:
-    // a wider dialog divided by the same five columns. Drag the dialog wider
-    // still and they grow with it.
-    dlg.initialWidth = 760;
+    // Symbol buttons are set to full width, so they stretch to whatever share
+    // of the dialog their column gets. A wide dialog therefore does not make
+    // the glyphs bigger — it just smears each one across a button wide enough
+    // for a sentence. Ten columns in a modest width gives a sane button around
+    // fifty pixels across, and leaves the dialog narrow enough to drag.
+    dlg.initialWidth = 560;
     dlg.setIsResizable(true);
 
     const col = dlg.addColumn();
@@ -359,14 +357,19 @@
 
     const fGroup     = col.addGroup('2.  Maths (LaTeX)');
     const formulaBox = fGroup.addTextBox('', draftFormula[initialPickIdx]);
-    formulaBox.setIsMultiLine(true).setRowSpan(4).setIsFullWidth(true);
+    formulaBox.setIsMultiLine(true).setRowSpan(3).setIsFullWidth(true);
 
+    // Ten across rather than five. Affinity has no scrolling and no height
+    // setting for dialogs, so the only way to fit a short screen is to BE
+    // short: twice the columns is half the rows, and the symbol block drops
+    // from twelve rows to six.
+    const SYMBOL_COLUMNS = 10;
     const symGroup   = col.addGroup('Symbols  (click one to add it at the end)');
     const symStack   = symGroup.addColumnStack();
     const symColGrps = [];
-    for (let c = 0; c < 5; c++) symColGrps.push(symStack.addColumn().addGroup(''));
+    for (let c = 0; c < SYMBOL_COLUMNS; c++) symColGrps.push(symStack.addColumn().addGroup(''));
     SYMBOLS.forEach((sym, i) => {
-        const btn = symColGrps[i % 5].addButton(sym[0]);
+        const btn = symColGrps[i % SYMBOL_COLUMNS].addButton(sym[0]);
         btn.setIsFullWidth(true);
         btn.setOnClickHandler(() => { formulaBox.text = formulaBox.text + sym[1]; });
     });

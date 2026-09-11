@@ -345,8 +345,6 @@ Say '   an update you have to add it again to get the newest'
 Say '   one. The maths server updates on its own.'
 Say '  -------------------------------------------------------'
 
-try { Start-Process explorer.exe "/select,`"$SCRIPT_JS`"" } catch { }
-
 if ($NoStart) {
     Say ''
     Say '  Setup finished.'
