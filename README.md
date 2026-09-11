@@ -11,14 +11,23 @@ A LaTeX equation editor for **Affinity Publisher 2** — no external apps, no pl
 
 The script calls a local MathJax rendering server (included) which converts LaTeX → SVG. The SVG paths are then drawn directly onto the Affinity canvas as native vector curves — fully scalable, fully editable, no rasterisation.
 
-**Modes — one script handles everything:**
+**One dialog handles everything.** The list at the top is the only thing that decides whether you add or change:
 
-| Selection state | What happens |
+| Top of the dialog says | What happens on OK |
 |---|---|
-| Select an EQ-tagged equation | Re-edits it — formula and size pre-filled |
-| Select any other object | Replaces it with a new equation |
-| Nothing selected, equations on page | Auto-picks the most recent one to edit |
-| Nothing selected, blank page | Fresh create dialog |
+| ✚ Add a NEW equation to the page | A new equation is added. Nothing else is touched. |
+| ✎ Change #2: a² + b² = c² | That one equation is redrawn, in the same spot. |
+
+It opens on **✚ Add a NEW equation** every time, unless you had an equation selected when you launched the script — then it opens ready to change that one. Clicking OK twice in a row always gives you two equations, never one replacing the other.
+
+### Editing an equation you already made
+
+Affinity has no way for a script to hook a double-click on a layer, so double-clicking the layer cannot open this dialog. Use either of these instead:
+
+- **Pick it from the list** — run the script and choose it under *1. Which equation?*. Works however you launch the script.
+- **Select it first** — click the equation on the canvas, then run the script from the **Script menu** or a keyboard shortcut. It opens with that equation already chosen.
+
+> Launching from the **Scripts panel** clears the selection before the script runs — that is an Affinity behaviour, not a bug in the script. The list exists so this never matters.
 
 ---
 
@@ -91,23 +100,29 @@ curl http://localhost:3737/health
 ### 3 — Use it
 
 - Run the script from **Script → equation_editor** (or your shortcut)
+- Leave the top list on **✚ Add a NEW equation** to add one
 - Type a LaTeX formula in the text box (e.g. `\frac{-b \pm \sqrt{b^2-4ac}}{2a}`)
 - Click symbols from the palette to build the formula
-- Choose a size and click **OK**
-- To re-edit: select the equation on the canvas and run the script again
+- Choose a size and click **OK** — the new equation lands in the middle of the page, already selected, ready to drag
+- To change one later: run the script and pick it from that same top list
 
 ---
 
 ## LaTeX support
 
-Anything MathJax 3 supports — fractions, integrals, sums, Greek letters, matrices, aligned environments, `\mathbb`, `\mathbf`, etc.
+Every MathJax 3 package is loaded — fractions, integrals, sums, Greek letters, matrices, aligned environments, cases, `\mathbb`, `\mathbf`, `\text`, and so on.
 
 ```latex
-\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}          % Quadratic formula
+\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}           % Quadratic formula
 e^{i\pi} + 1 = 0                             % Euler's identity
-\int_{-\infty}^{\infty} e^{-x^2}\,dx        % Gaussian integral
+\int_{-\infty}^{\infty} e^{-x^2}\,dx         % Gaussian integral
 \begin{pmatrix} a & b \\ c & d \end{pmatrix} % Matrix
+\begin{cases} 1 & x > 0 \\ 0 & x \le 0 \end{cases}
 ```
+
+If a formula has a mistake in it, the script says so in plain words — which command it did not recognise, or which brackets do not match — and leaves your page exactly as it was.
+
+> **Note:** `\dfrac`, `\begin{pmatrix}`, `\begin{align}` and every other AMS command silently failed before. The server listed the AMS package but never imported it, so those commands came back as *"Undefined control sequence"*. Fixed in `server/katex_server.js` — **restart the render server** to pick it up.
 
 ---
 
@@ -131,15 +146,35 @@ pkg server.js --targets node18-win-x64 --output dist/server.exe
 
 ---
 
+## Size
+
+Equations are sized in **points**, the same unit Affinity uses for text — so 18 pt maths sits next to 18 pt writing and matches it, whether the document is 96 DPI or 300 DPI.
+
+| Choice | Size |
+|---|---|
+| Tiny | 10 pt |
+| Small | 14 pt |
+| **Normal** | **18 pt** (default) |
+| Big | 24 pt |
+| Very big | 32 pt |
+| Huge | 48 pt |
+| Poster | 72 pt |
+
+The size you pick is remembered for next time, in `~/.affinity-equation-editor.json`.
+
+> **Upgrading from v5?** Older versions sized equations in raw document pixels, which is why they came out microscopic on print documents — the old default of 40 px is 14 mm at 72 DPI but only 3.4 mm at 300 DPI. Old equations are still recognised; pick one from the list and click OK to redraw it at a proper point size.
+
+---
+
 ## How equations are stored
 
-Each equation is stored as a native PolyCurve node. The layer name encodes the formula and size:
+Each equation is a native PolyCurve node. The layer description holds the formula and its size, so you can read it straight from the Layers panel:
 
 ```
-EQ:\frac{a}{b}||H:40
+EQ 18pt: \frac{a}{b}
 ```
 
-When you select the node and re-run the script, it reads this tag to pre-fill the editor — so you always get back to the original LaTeX.
+The script finds its own equations by this tag, which is how the list at the top of the dialog is built. Tags from older versions (`EQ:\frac{a}{b}||H:40`) are still read.
 
 ---
 

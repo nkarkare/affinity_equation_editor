@@ -32,12 +32,24 @@ async function bootMathJax() {
     const { liteAdaptor }         = await import('mathjax-full/js/adaptors/liteAdaptor.js');
     const { RegisterHTMLHandler } = await import('mathjax-full/js/handlers/html.js');
 
+    // Naming a package in the list below is NOT enough — each extension has to
+    // be imported so that it registers itself first. Without this line \dfrac,
+    // \begin{pmatrix}, \begin{align} and every other AMS command came back as
+    // "Undefined control sequence". Importing AllPackages registers the lot.
+    const { AllPackages } = await import('mathjax-full/js/input/tex/AllPackages.js');
+
     const adaptor = liteAdaptor();
     RegisterHTMLHandler(adaptor);
 
+    // 'noerrors' and 'noundefined' are deliberately dropped. They swallow
+    // mistakes and quietly draw red "\dfrac" text into the page instead. Left
+    // out, a bad formula produces a proper error that the Affinity script can
+    // catch and explain in plain words — far better than a mystery on the page.
+    const packages = AllPackages.filter(p => p !== 'noerrors' && p !== 'noundefined');
+
     const doc = mathjax.document('', {
         InputJax:  new TeX({
-            packages: ['base', 'ams', 'boldsymbol', 'noerrors', 'noundefined'],
+            packages,
         }),
         OutputJax: new SVG({
             fontCache:  'none',   // inline all glyph paths — self-contained SVG
